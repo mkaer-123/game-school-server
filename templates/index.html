@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shape Games Server - 100 Games!</title>
+    <title>Arcade Games Server - 100 Classic Games!</title>
     <style>
         * {
             margin: 0;
@@ -12,256 +12,243 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
-            color: #333;
+            color: #fff;
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
         
         header {
             text-align: center;
-            color: white;
+            color: #00ff88;
             margin-bottom: 40px;
-            animation: slideDown 0.6s ease;
+            animation: glitch 0.6s ease;
+            text-shadow: 0 0 10px #00ff88;
         }
         
         header h1 {
-            font-size: 3em;
+            font-size: 2.5em;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: 3px;
         }
         
         header p {
-            font-size: 1.2em;
-            opacity: 0.9;
+            font-size: 0.8em;
+            color: #00ffff;
+            text-shadow: 0 0 5px #00ffff;
         }
         
         .main-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
+            gap: 20px;
+            margin-bottom: 20px;
         }
         
         .card {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            background: rgba(22, 33, 62, 0.8);
+            border: 3px solid #00ff88;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
             animation: fadeIn 0.6s ease;
         }
         
         .card h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-            border-bottom: 3px solid #667eea;
+            color: #00ff88;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #00ff88;
             padding-bottom: 10px;
+            font-size: 1.2em;
+            text-shadow: 0 0 10px #00ff88;
         }
         
         .buttons-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 10px;
+            margin-bottom: 15px;
         }
         
         button {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1em;
+            padding: 10px 15px;
+            border: 2px solid #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7em;
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 600;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
         }
         
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-        }
-        
-        .btn-secondary {
-            background: #764ba2;
-            color: white;
-        }
-        
-        .btn-secondary:hover {
-            background: #6a3f8f;
-            transform: translateY(-2px);
-        }
-        
-        .btn-success {
-            background: #48bb78;
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background: #38a169;
-            transform: translateY(-2px);
+        button:hover {
+            background: #00ff88;
+            color: #1a1a2e;
+            box-shadow: 0 0 10px #00ff88;
+            transform: scale(1.05);
         }
         
         .games-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-            max-height: 400px;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+            max-height: 350px;
             overflow-y: auto;
-            padding-right: 10px;
         }
         
         .game-item {
-            background: #f7fafc;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
+            background: rgba(0, 255, 136, 0.05);
+            padding: 10px;
+            border: 2px solid #00ffff;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             text-align: center;
+            font-size: 0.7em;
         }
         
         .game-item:hover {
-            background: #edf2f7;
-            transform: translateX(5px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            background: rgba(0, 255, 136, 0.2);
+            box-shadow: 0 0 10px #00ffff;
+            border-color: #00ff88;
         }
         
         .game-item .id {
             font-weight: 700;
-            color: #667eea;
-            font-size: 1.2em;
+            color: #ff00ff;
+            font-size: 1.1em;
         }
         
         .game-item .name {
-            font-size: 0.9em;
-            color: #666;
-            margin-top: 5px;
+            color: #00ff88;
+            margin: 5px 0;
         }
         
-        .game-item .difficulty {
-            font-size: 0.75em;
-            margin-top: 8px;
-            padding: 4px 8px;
-            border-radius: 4px;
+        .difficulty {
+            font-size: 0.65em;
+            padding: 3px 5px;
             display: inline-block;
+            margin-top: 5px;
+            border: 1px solid;
         }
         
-        .difficulty.easy { background: #c6f6d5; color: #22543d; }
-        .difficulty.medium { background: #feebc8; color: #7c2d12; }
-        .difficulty.hard { background: #fed7d7; color: #742a2a; }
-        .difficulty.expert { background: #e6fffa; color: #234e52; }
+        .difficulty.easy { border-color: #00ff88; color: #00ff88; }
+        .difficulty.medium { border-color: #ffff00; color: #ffff00; }
+        .difficulty.hard { border-color: #ff6600; color: #ff6600; }
+        .difficulty.expert { border-color: #ff0000; color: #ff0000; }
         
         .stats {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
         }
         
         .stat-box {
-            background: #edf2f7;
-            padding: 20px;
-            border-radius: 8px;
+            background: rgba(0, 255, 136, 0.1);
+            padding: 10px;
+            border: 2px solid #00ffff;
             text-align: center;
+            font-size: 0.7em;
         }
         
         .stat-box .number {
-            font-size: 2em;
+            font-size: 1.5em;
             font-weight: 700;
-            color: #667eea;
+            color: #00ff88;
         }
         
         .stat-box .label {
-            color: #666;
-            font-size: 0.9em;
+            color: #00ffff;
             margin-top: 5px;
         }
         
         .chatbot {
             display: flex;
             flex-direction: column;
-            max-height: 500px;
+            max-height: 450px;
         }
         
         .chat-messages {
             flex: 1;
             overflow-y: auto;
-            margin-bottom: 15px;
-            background: #f7fafc;
-            padding: 15px;
-            border-radius: 8px;
-            border: 2px solid #e2e8f0;
+            margin-bottom: 10px;
+            background: rgba(0, 255, 136, 0.05);
+            padding: 10px;
+            border: 2px solid #00ffff;
         }
         
         .message {
-            margin-bottom: 12px;
-            padding: 10px 15px;
-            border-radius: 8px;
+            margin-bottom: 8px;
+            padding: 8px 10px;
+            font-size: 0.7em;
             animation: slideUp 0.3s ease;
         }
         
         .message.user {
-            background: #667eea;
-            color: white;
-            margin-left: 20px;
+            background: rgba(255, 0, 255, 0.2);
+            color: #ff00ff;
+            border-left: 3px solid #ff00ff;
             text-align: right;
         }
         
         .message.ai {
-            background: #e2e8f0;
-            color: #333;
-            margin-right: 20px;
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            border-left: 3px solid #00ff88;
         }
         
         .chat-input-group {
             display: flex;
-            gap: 10px;
+            gap: 5px;
         }
         
         .chat-input-group input {
             flex: 1;
-            padding: 12px 15px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1em;
+            padding: 8px 10px;
+            border: 2px solid #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7em;
+        }
+        
+        .chat-input-group input::placeholder {
+            color: rgba(0, 255, 136, 0.5);
         }
         
         .chat-input-group input:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            box-shadow: 0 0 10px #00ff88;
         }
         
         .filter-section {
             display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-bottom: 15px;
             flex-wrap: wrap;
+            font-size: 0.8em;
         }
         
         select {
-            padding: 10px 15px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 0.95em;
+            padding: 8px 10px;
+            border: 2px solid #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7em;
             cursor: pointer;
         }
         
         select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            box-shadow: 0 0 10px #00ff88;
         }
         
         .modal {
@@ -272,30 +259,60 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            animation: fadeIn 0.3s ease;
+            background-color: rgba(0, 0, 0, 0.8);
         }
         
         .modal-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 30px;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            background: #1a1a2e;
+            border: 3px solid #00ff88;
+            margin: 10% auto;
+            padding: 20px;
+            width: 80%;
+            max-width: 400px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+        
+        .modal-content h2 {
+            color: #00ff88;
+            text-shadow: 0 0 10px #00ff88;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .modal-content p {
+            color: #00ffff;
+            font-size: 0.8em;
+            margin: 10px 0;
         }
         
         .close {
-            color: #999;
-            font-size: 28px;
+            color: #00ff88;
+            font-size: 24px;
             font-weight: bold;
             cursor: pointer;
             float: right;
         }
         
         .close:hover {
-            color: #333;
+            color: #ff00ff;
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 255, 136, 0.1);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #00ff88;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00ffff;
         }
         
         @media (max-width: 768px) {
@@ -304,21 +321,17 @@
             }
             
             header h1 {
-                font-size: 2em;
+                font-size: 1.5em;
             }
             
             .games-list {
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            }
-            
-            .stats {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
             }
         }
         
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes glitch {
+            0% { text-shadow: -2px 0 #ff00ff, 2px 0 #00ffff; }
+            100% { text-shadow: 0 0 #00ff88; }
         }
         
         @keyframes fadeIn {
@@ -335,42 +348,41 @@
 <body>
     <div class="container">
         <header>
-            <h1>🎮 Shape Games Server</h1>
-            <p>100 Amazing Shape-Based Games | Powered by Ollama AI</p>
+            <h1>👾 ARCADE GAMES 👾</h1>
+            <p>100 Classic Arcade Games | Powered by Ollama AI</p>
         </header>
         
         <div class="main-grid">
             <!-- Games Section -->
             <div class="card">
-                <h2>🎯 Games Library</h2>
+                <h2>🎮 GAMES LIBRARY</h2>
                 
                 <div class="filter-section">
                     <select id="typeFilter">
-                        <option value="">All Types</option>
-                        <option value="pattern">Pattern Recognition</option>
-                        <option value="color">Color & Shapes</option>
-                        <option value="speed">Speed & Precision</option>
-                        <option value="geometry">Geometry & Math</option>
-                        <option value="identification">Shape ID</option>
-                        <option value="rotation">Rotation</option>
-                        <option value="logic">Puzzle & Logic</option>
-                        <option value="creative">Drawing & Creation</option>
-                        <option value="memory">Memory</option>
+                        <option value="">ALL TYPES</option>
+                        <option value="paddle">Paddle</option>
+                        <option value="movement">Movement</option>
+                        <option value="shooter">Shooter</option>
+                        <option value="arcade">Arcade</option>
+                        <option value="puzzle">Puzzle</option>
+                        <option value="racing">Racing</option>
+                        <option value="platform">Platform</option>
                         <option value="multiplayer">Multiplayer</option>
+                        <option value="special">Special</option>
                     </select>
                     
                     <select id="difficultyFilter">
-                        <option value="">All Difficulties</option>
-                        <option value="easy">Easy</option>
-                        <option value="medium">Medium</option>
-                        <option value="hard">Hard</option>
-                        <option value="expert">Expert</option>
+                        <option value="">ALL DIFFICULTY</option>
+                        <option value="easy">EASY</option>
+                        <option value="medium">MEDIUM</option>
+                        <option value="hard">HARD</option>
+                        <option value="expert">EXPERT</option>
                     </select>
                 </div>
                 
                 <div class="buttons-grid">
-                    <button class="btn-primary" onclick="randomGame()">🎲 Random Game</button>
-                    <button class="btn-secondary" onclick="loadAllGames()">📚 All Games</button>
+                    <button onclick="randomGame()">🎲 RANDOM</button>
+                    <button onclick="loadAllGames()">📚 ALL GAMES</button>
                 </div>
                 
                 <div class="games-list" id="gamesList"></div>
@@ -380,23 +392,24 @@
             
             <!-- AI Chatbot Section -->
             <div class="card">
-                <h2>🤖 AI Gaming Assistant</h2>
-                <p style="font-size: 0.9em; color: #999; margin-bottom: 15px;">Chat with Ollama AI for game tips, recommendations & strategies!</p>
+                <h2>🤖 AI ARCADE BUDDY</h2>
                 
                 <div class="chatbot">
                     <div class="chat-messages" id="chatMessages">
                         <div class="message ai">
-                            👋 Hi! I'm your AI gaming assistant. Ask me about game recommendations, tips, or strategies!
+                            > ARCADE BUDDY ONLINE<br>
+                            > READY TO HELP!<br>
+                            > ASK ME ANYTHING 👾
                         </div>
                     </div>
                     
                     <div class="chat-input-group">
-                        <input type="text" id="chatInput" placeholder="Ask me anything about the games..." onkeypress="handleChatKey(event)">
-                        <button class="btn-primary" onclick="sendMessage()" style="flex: 0;">Send</button>
+                        <input type="text" id="chatInput" placeholder="Your question..." onkeypress="handleChatKey(event)">
+                        <button onclick="sendMessage()" style="flex: 0; width: 80px;">SEND</button>
                     </div>
                 </div>
                 
-                <button class="btn-secondary" onclick="clearChat()" style="width: 100%; margin-top: 15px;">Clear Chat</button>
+                <button onclick="clearChat()" style="width: 100%; margin-top: 10px;">CLEAR</button>
             </div>
         </div>
     </div>
@@ -406,21 +419,19 @@
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
             <h2 id="modalTitle"></h2>
-            <p><strong>Type:</strong> <span id="modalType"></span></p>
-            <p><strong>Difficulty:</strong> <span id="modalDifficulty"></span></p>
+            <p><strong>▸ TYPE:</strong> <span id="modalType"></span></p>
+            <p><strong>▸ DIFFICULTY:</strong> <span id="modalDifficulty"></span></p>
             <p id="modalDescription"></p>
-            <button class="btn-success" style="width: 100%; margin-top: 20px;" onclick="playGame()">▶️ Play Game</button>
+            <button onclick="playGame()" style="width: 100%; margin-top: 15px;">▶ PLAY NOW</button>
         </div>
     </div>
     
     <script>
-        // Load all games on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadAllGames();
             loadStats();
         });
         
-        // Filter games
         document.getElementById('typeFilter').addEventListener('change', applyFilters);
         document.getElementById('difficultyFilter').addEventListener('change', applyFilters);
         
@@ -442,7 +453,7 @@
                 let html = `
                     <div class="stat-box">
                         <div class="number">${stats.total_games}</div>
-                        <div class="label">Total Games</div>
+                        <div class="label">GAMES</div>
                     </div>
                 `;
                 
@@ -450,7 +461,7 @@
                     html += `
                         <div class="stat-box">
                             <div class="number">${count}</div>
-                            <div class="label">${type.charAt(0).toUpperCase() + type.slice(1)}</div>
+                            <div class="label">${type.toUpperCase()}</div>
                         </div>
                     `;
                 }
@@ -498,7 +509,7 @@
                     <div class="game-item" onclick="showGameModal(${id}, ${JSON.stringify(game)})">
                         <div class="id">#${id}</div>
                         <div class="name">${game.name}</div>
-                        <div class="difficulty ${game.difficulty}">${game.difficulty}</div>
+                        <div class="difficulty ${game.difficulty}">${game.difficulty.toUpperCase()}</div>
                     </div>
                 `;
             }
@@ -508,9 +519,9 @@
         
         function showGameModal(id, game) {
             document.getElementById('modalTitle').textContent = `${game.name} (#${id})`;
-            document.getElementById('modalType').textContent = game.type.charAt(0).toUpperCase() + game.type.slice(1);
+            document.getElementById('modalType').textContent = game.type.toUpperCase();
             document.getElementById('modalDifficulty').textContent = game.difficulty.toUpperCase();
-            document.getElementById('modalDescription').textContent = `Get ready to play ${game.name}! This ${game.difficulty} level game focuses on ${game.type} skills.`;
+            document.getElementById('modalDescription').textContent = game.description;
             document.getElementById('gameModal').style.display = 'block';
         }
         
@@ -519,18 +530,16 @@
         }
         
         function playGame() {
-            alert('🎮 Game launching! The actual game would load here.');
+            alert('🎮 LAUNCHING GAME...\n\nThe actual game would load here!');
             closeModal();
         }
         
-        // Chatbot functions
         async function sendMessage() {
             const input = document.getElementById('chatInput');
             const message = input.value.trim();
             
             if (!message) return;
             
-            // Add user message to chat
             addMessage(message, 'user');
             input.value = '';
             
@@ -544,7 +553,7 @@
                 const data = await response.json();
                 addMessage(data.response, 'ai');
             } catch (error) {
-                addMessage('⚠️ Error connecting to AI. Make sure Ollama is running!', 'ai');
+                addMessage('⚠️ CONNECTION ERROR', 'ai');
             }
         }
         
@@ -568,7 +577,9 @@
                 await fetch('/api/chat/clear', { method: 'POST' });
                 document.getElementById('chatMessages').innerHTML = `
                     <div class="message ai">
-                        👋 Hi! I'm your AI gaming assistant. Ask me about game recommendations, tips, or strategies!
+                        > CHAT CLEARED<br>
+                        > READY FOR NEW GAME<br>
+                        > DISCUSS 👾
                     </div>
                 `;
             } catch (error) {
@@ -576,7 +587,6 @@
             }
         }
         
-        // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('gameModal');
             if (event.target == modal) {
