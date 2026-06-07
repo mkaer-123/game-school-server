@@ -25,23 +25,73 @@
         }
         
         header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #00ff88;
+        }
+        
+        .header-title {
             text-align: center;
             color: #00ff88;
-            margin-bottom: 40px;
-            animation: glitch 0.6s ease;
+            flex: 1;
             text-shadow: 0 0 10px #00ff88;
         }
         
-        header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+        .header-title h1 {
+            font-size: 2em;
             letter-spacing: 3px;
         }
         
-        header p {
-            font-size: 0.8em;
+        .header-title p {
+            font-size: 0.7em;
             color: #00ffff;
             text-shadow: 0 0 5px #00ffff;
+        }
+        
+        .user-panel {
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid #00ff88;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            min-width: 200px;
+        }
+        
+        .user-info {
+            margin-bottom: 10px;
+            color: #00ffff;
+        }
+        
+        .user-info strong {
+            color: #00ff88;
+        }
+        
+        .gems {
+            color: #ffff00;
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+        
+        .logout-btn {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #ff0000;
+            background: rgba(255, 0, 0, 0.1);
+            color: #ff6666;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 10px;
+        }
+        
+        .logout-btn:hover {
+            background: #ff0000;
+            color: #fff;
+            box-shadow: 0 0 10px #ff0000;
         }
         
         .main-grid {
@@ -119,6 +169,11 @@
             border-color: #00ff88;
         }
         
+        .game-item.locked {
+            border-color: #ff6600;
+            opacity: 0.6;
+        }
+        
         .game-item .id {
             font-weight: 700;
             color: #ff00ff;
@@ -128,6 +183,12 @@
         .game-item .name {
             color: #00ff88;
             margin: 5px 0;
+        }
+        
+        .game-item .cost {
+            color: #ffff00;
+            font-size: 0.8em;
+            margin-top: 3px;
         }
         
         .difficulty {
@@ -297,7 +358,23 @@
             color: #ff00ff;
         }
         
-        /* Scrollbar styling */
+        .purchase-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #00ff88;
+        }
+        
+        .purchase-btn {
+            background: rgba(255, 255, 0, 0.1);
+            border-color: #ffff00;
+            color: #ffff00;
+        }
+        
+        .purchase-btn:hover {
+            background: #ffff00;
+            color: #1a1a2e;
+        }
+        
         ::-webkit-scrollbar {
             width: 8px;
         }
@@ -320,18 +397,14 @@
                 grid-template-columns: 1fr;
             }
             
-            header h1 {
-                font-size: 1.5em;
+            header {
+                flex-direction: column;
+                gap: 15px;
             }
             
-            .games-list {
-                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            .header-title h1 {
+                font-size: 1.3em;
             }
-        }
-        
-        @keyframes glitch {
-            0% { text-shadow: -2px 0 #ff00ff, 2px 0 #00ffff; }
-            100% { text-shadow: 0 0 #00ff88; }
         }
         
         @keyframes fadeIn {
@@ -348,8 +421,22 @@
 <body>
     <div class="container">
         <header>
-            <h1>👾 ARCADE GAMES 👾</h1>
-            <p>100 Classic Arcade Games | Powered by Ollama AI</p>
+            <div class="header-title">
+                <h1>👾 ARCADE GAMES 👾</h1>
+                <p>100 Classic Arcade Games | Powered by Ollama AI</p>
+            </div>
+            <div class="user-panel">
+                <div class="user-info">
+                    <strong>PLAYER:</strong> <span id="playerName"></span>
+                </div>
+                <div class="gems">
+                    💎 <span id="gemsDisplay">0</span> GEMS
+                </div>
+                <div class="user-info">
+                    <strong>HIGH SCORE:</strong> <span id="highScore">0</span>
+                </div>
+                <button class="logout-btn" onclick="logout()">LOGOUT</button>
+            </div>
         </header>
         
         <div class="main-grid">
@@ -422,18 +509,38 @@
             <p><strong>▸ TYPE:</strong> <span id="modalType"></span></p>
             <p><strong>▸ DIFFICULTY:</strong> <span id="modalDifficulty"></span></p>
             <p id="modalDescription"></p>
-            <button onclick="playGame()" style="width: 100%; margin-top: 15px;">▶ PLAY NOW</button>
+            
+            <div class="purchase-section">
+                <p><strong>💎 COST:</strong> <span id="modalCost"></span> GEMS</p>
+                <button id="purchaseBtn" onclick="purchaseGame()" class="purchase-btn" style="width: 100%;">BUY & PLAY</button>
+            </div>
         </div>
     </div>
     
     <script>
+        let currentGameId = null;
+        
         document.addEventListener('DOMContentLoaded', function() {
+            loadUserData();
             loadAllGames();
             loadStats();
         });
         
         document.getElementById('typeFilter').addEventListener('change', applyFilters);
         document.getElementById('difficultyFilter').addEventListener('change', applyFilters);
+        
+        async function loadUserData() {
+            try {
+                const response = await fetch('/api/user');
+                const data = await response.json();
+                
+                document.getElementById('playerName').textContent = data.name;
+                document.getElementById('gemsDisplay').textContent = data.gems;
+                document.getElementById('highScore').textContent = data.high_score || 0;
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
         
         async function loadAllGames() {
             try {
@@ -505,10 +612,12 @@
             let html = '';
             
             for (let [id, game] of Object.entries(games)) {
+                const locked = game.cost > 0 ? 'locked' : '';
                 html += `
-                    <div class="game-item" onclick="showGameModal(${id}, ${JSON.stringify(game)})">
+                    <div class="game-item ${locked}" onclick="showGameModal(${id}, ${JSON.stringify(game)})">
                         <div class="id">#${id}</div>
                         <div class="name">${game.name}</div>
+                        ${game.cost > 0 ? `<div class="cost">💎 ${game.cost}</div>` : ''}
                         <div class="difficulty ${game.difficulty}">${game.difficulty.toUpperCase()}</div>
                     </div>
                 `;
@@ -518,10 +627,26 @@
         }
         
         function showGameModal(id, game) {
+            currentGameId = id;
             document.getElementById('modalTitle').textContent = `${game.name} (#${id})`;
             document.getElementById('modalType').textContent = game.type.toUpperCase();
             document.getElementById('modalDifficulty').textContent = game.difficulty.toUpperCase();
             document.getElementById('modalDescription').textContent = game.description;
+            document.getElementById('modalCost').textContent = game.cost || 'FREE';
+            
+            const purchaseBtn = document.getElementById('purchaseBtn');
+            if (game.cost === 0) {
+                purchaseBtn.textContent = '▶ PLAY NOW';
+                purchaseBtn.style.borderColor = '#00ff88';
+                purchaseBtn.style.color = '#00ff88';
+                purchaseBtn.style.background = 'rgba(0, 255, 136, 0.1)';
+            } else {
+                purchaseBtn.textContent = `BUY FOR ${game.cost} GEMS & PLAY`;
+                purchaseBtn.style.borderColor = '#ffff00';
+                purchaseBtn.style.color = '#ffff00';
+                purchaseBtn.style.background = 'rgba(255, 255, 0, 0.1)';
+            }
+            
             document.getElementById('gameModal').style.display = 'block';
         }
         
@@ -529,9 +654,26 @@
             document.getElementById('gameModal').style.display = 'none';
         }
         
-        function playGame() {
-            alert('🎮 LAUNCHING GAME...\n\nThe actual game would load here!');
-            closeModal();
+        async function purchaseGame() {
+            if (!currentGameId) return;
+            
+            try {
+                const response = await fetch(`/api/purchase-game/${currentGameId}`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`🎮 ${data.message}\n💎 Gems: ${data.gems_remaining}`);
+                    loadUserData();
+                    closeModal();
+                } else {
+                    const data = await response.json();
+                    alert(`❌ ${data.error}\nNeed: ${data.needed} | Have: ${data.have}`);
+                }
+            } catch (error) {
+                alert('Error purchasing game!');
+            }
         }
         
         async function sendMessage() {
@@ -584,6 +726,12 @@
                 `;
             } catch (error) {
                 console.error('Error clearing chat:', error);
+            }
+        }
+        
+        function logout() {
+            if (confirm('LOGOUT? (Ctrl+C cancels)')) {
+                window.location.href = '/logout';
             }
         }
         
