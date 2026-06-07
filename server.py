@@ -1,12 +1,12 @@
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_cors import CORS
 import random
-import math
 import requests
-import json
 import secrets
+from datetime import timedelta, datetime
+import hashlib
+import json
 import os
-from datetime import timedelta
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
@@ -19,128 +19,182 @@ app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 # Ollama AI configuration
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
-# ============ GAME DATABASE ============
+# ============ USER ACCOUNTS & AUTHENTICATION ============
 
-SHAPE_GAMES = {
-    # Pattern Recognition Games (1-10)
-    1: {"name": "Circle Match", "type": "pattern", "difficulty": "easy"},
-    2: {"name": "Square Sequence", "type": "pattern", "difficulty": "easy"},
-    3: {"name": "Triangle Rotation", "type": "pattern", "difficulty": "medium"},
-    4: {"name": "Shape Morph", "type": "pattern", "difficulty": "medium"},
-    5: {"name": "Polygon Fill", "type": "pattern", "difficulty": "hard"},
-    6: {"name": "Symmetry Master", "type": "pattern", "difficulty": "easy"},
-    7: {"name": "Shape Grid Solver", "type": "pattern", "difficulty": "hard"},
-    8: {"name": "Tessellation Builder", "type": "pattern", "difficulty": "hard"},
-    9: {"name": "Fractal Explorer", "type": "pattern", "difficulty": "expert"},
-    10: {"name": "Shape Evolution", "type": "pattern", "difficulty": "expert"},
+# Store user data in JSON file
+USERS_FILE = 'users.json'
+
+# Default 10 accounts - passwords change every month
+def generate_monthly_password(username, month=None):
+    """Generate a password that changes monthly based on username and month"""
+    if month is None:
+        month = datetime.now().strftime("%Y-%m")
     
-    # Color & Shape Combinations (11-20)
-    11: {"name": "Color Shape Sort", "type": "color", "difficulty": "easy"},
-    12: {"name": "Gradient Blend", "type": "color", "difficulty": "medium"},
-    13: {"name": "Hue Spectrum Match", "type": "color", "difficulty": "medium"},
-    14: {"name": "Color Wheel Puzzle", "type": "color", "difficulty": "medium"},
-    15: {"name": "Chromatic Depth", "type": "color", "difficulty": "hard"},
-    16: {"name": "Rainbow Constructor", "type": "color", "difficulty": "hard"},
-    17: {"name": "Color Harmony", "type": "color", "difficulty": "easy"},
-    18: {"name": "Shade Distinction", "type": "color", "difficulty": "medium"},
-    19: {"name": "Palette Picker", "type": "color", "difficulty": "hard"},
-    20: {"name": "Color Blindness Test", "type": "color", "difficulty": "expert"},
+    # Create a hash of username + month + secret
+    seed = f"{username}_{month}_arcade_secret"
+    password_hash = hashlib.md5(seed.encode()).hexdigest()[:10].upper()
+    return password_hash
+
+# Initialize default users
+DEFAULT_USERS = {
+    "player1": {"name": "Player 1", "gems": 1000, "high_score": 0},
+    "player2": {"name": "Player 2", "gems": 1000, "high_score": 0},
+    "player3": {"name": "Player 3", "gems": 1000, "high_score": 0},
+    "player4": {"name": "Player 4", "gems": 1000, "high_score": 0},
+    "player5": {"name": "Player 5", "gems": 1000, "high_score": 0},
+    "player6": {"name": "Player 6", "gems": 1000, "high_score": 0},
+    "player7": {"name": "Player 7", "gems": 1000, "high_score": 0},
+    "player8": {"name": "Player 8", "gems": 1000, "high_score": 0},
+    "player9": {"name": "Player 9", "gems": 1000, "high_score": 0},
+    "player10": {"name": "Player 10", "gems": 1000, "high_score": 0},
+}
+
+def load_users():
+    """Load users from JSON file"""
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return DEFAULT_USERS.copy()
+    return DEFAULT_USERS.copy()
+
+def save_users(users):
+    """Save users to JSON file"""
+    with open(USERS_FILE, 'w') as f:
+        json.dump(users, f, indent=2)
+
+def verify_login(username, password):
+    """Verify username and password"""
+    users = load_users()
     
-    # Speed & Precision (21-30)
-    21: {"name": "Rapid Click", "type": "speed", "difficulty": "easy"},
-    22: {"name": "Shape Sprint", "type": "speed", "difficulty": "medium"},
-    23: {"name": "Precision Aim", "type": "speed", "difficulty": "medium"},
-    24: {"name": "Fast Reflect", "type": "speed", "difficulty": "hard"},
-    25: {"name": "Dodge Shapes", "type": "speed", "difficulty": "hard"},
-    26: {"name": "Bounce Challenge", "type": "speed", "difficulty": "medium"},
-    27: {"name": "Target Practice", "type": "speed", "difficulty": "easy"},
-    28: {"name": "Shape Catch", "type": "speed", "difficulty": "medium"},
-    29: {"name": "Extreme Reaction", "type": "speed", "difficulty": "hard"},
-    30: {"name": "Hyperspeed", "type": "speed", "difficulty": "expert"},
+    if username not in users:
+        return False
     
-    # Geometry & Math (31-40)
-    31: {"name": "Angle Calculator", "type": "geometry", "difficulty": "medium"},
-    32: {"name": "Area Master", "type": "geometry", "difficulty": "medium"},
-    33: {"name": "Perimeter Challenge", "type": "geometry", "difficulty": "easy"},
-    34: {"name": "Volume Builder", "type": "geometry", "difficulty": "hard"},
-    35: {"name": "Coordinate Mapper", "type": "geometry", "difficulty": "medium"},
-    36: {"name": "Pythagorean Puzzle", "type": "geometry", "difficulty": "hard"},
-    37: {"name": "Tangent Tracer", "type": "geometry", "difficulty": "hard"},
-    38: {"name": "Circle Theorem", "type": "geometry", "difficulty": "hard"},
-    39: {"name": "3D Rotation", "type": "geometry", "difficulty": "expert"},
-    40: {"name": "Tessellation Math", "type": "geometry", "difficulty": "expert"},
+    # Check if password matches current month's password
+    correct_password = generate_monthly_password(username)
+    return password.upper() == correct_password
+
+# ============ 100 ARCADE GAMES DATABASE ============
+
+ARCADE_GAMES = {
+    # Paddle Games (1-10)
+    1: {"name": "Pong Classic", "type": "paddle", "difficulty": "easy", "description": "2-player classic - hit the ball back and forth", "cost": 0},
+    2: {"name": "Air Hockey", "type": "paddle", "difficulty": "easy", "description": "Fast-paced paddle game", "cost": 50},
+    3: {"name": "Pong Extreme", "type": "paddle", "difficulty": "hard", "description": "Pong with speed multipliers", "cost": 200},
+    4: {"name": "Breakout", "type": "paddle", "difficulty": "medium", "description": "Break all the bricks", "cost": 0},
+    5: {"name": "Brick Breaker", "type": "paddle", "difficulty": "medium", "description": "Bounce ball to break bricks", "cost": 75},
+    6: {"name": "Arkanoid", "type": "paddle", "difficulty": "hard", "description": "Advanced brick breaker", "cost": 150},
+    7: {"name": "Paddle Defense", "type": "paddle", "difficulty": "hard", "description": "Defend against falling blocks", "cost": 200},
+    8: {"name": "Ball Bounce", "type": "paddle", "difficulty": "easy", "description": "Keep the ball in play", "cost": 0},
+    9: {"name": "Power Paddle", "type": "paddle", "difficulty": "medium", "description": "Paddle with power-ups", "cost": 100},
+    10: {"name": "Ultra Pong", "type": "paddle", "difficulty": "expert", "description": "4-player Pong madness", "cost": 300},
     
-    # Shape Identification (41-50)
-    41: {"name": "Shape Namer", "type": "identification", "difficulty": "easy"},
-    42: {"name": "Polygon Classifier", "type": "identification", "difficulty": "easy"},
-    43: {"name": "3D Shape ID", "type": "identification", "difficulty": "medium"},
-    44: {"name": "Shadow Matcher", "type": "identification", "difficulty": "medium"},
-    45: {"name": "Silhouette Solver", "type": "identification", "difficulty": "medium"},
-    46: {"name": "Outline Challenge", "type": "identification", "difficulty": "hard"},
-    47: {"name": "Distorted Shape ID", "type": "identification", "difficulty": "hard"},
-    48: {"name": "Perspective Puzzle", "type": "identification", "difficulty": "hard"},
-    49: {"name": "Impossible Shape", "type": "identification", "difficulty": "expert"},
-    50: {"name": "Optical Illusion", "type": "identification", "difficulty": "expert"},
+    # Snake/Movement Games (11-20)
+    11: {"name": "Snake Classic", "type": "movement", "difficulty": "easy", "description": "Eat food, grow longer, don't hit walls", "cost": 0},
+    12: {"name": "Super Snake", "type": "movement", "difficulty": "medium", "description": "Snake with power-ups", "cost": 75},
+    13: {"name": "Snake Maze", "type": "movement", "difficulty": "hard", "description": "Snake in a maze", "cost": 150},
+    14: {"name": "Worm Wars", "type": "movement", "difficulty": "medium", "description": "Multiplayer worm battle", "cost": 100},
+    15: {"name": "Caterpillar", "type": "movement", "difficulty": "easy", "description": "Grow your caterpillar", "cost": 0},
+    16: {"name": "Slither Master", "type": "movement", "difficulty": "hard", "description": "Advanced snake gameplay", "cost": 200},
+    17: {"name": "Portal Snake", "type": "movement", "difficulty": "medium", "description": "Snake with portals", "cost": 125},
+    18: {"name": "Rainbow Snake", "type": "movement", "difficulty": "medium", "description": "Colorful snake adventure", "cost": 100},
+    19: {"name": "Speed Snake", "type": "movement", "difficulty": "hard", "description": "Ultra-fast snake challenge", "cost": 175},
+    20: {"name": "Neon Snake", "type": "movement", "difficulty": "expert", "description": "Neon-styled snake game", "cost": 300},
     
-    # Rotation & Transformation (51-60)
-    51: {"name": "Rotate & Match", "type": "rotation", "difficulty": "easy"},
-    52: {"name": "Mirror Image", "type": "rotation", "difficulty": "easy"},
-    53: {"name": "Flip Challenge", "type": "rotation", "difficulty": "medium"},
-    54: {"name": "3D Rotation Viewer", "type": "rotation", "difficulty": "medium"},
-    55: {"name": "Rotation Sequence", "type": "rotation", "difficulty": "medium"},
-    56: {"name": "Complex Transforms", "type": "rotation", "difficulty": "hard"},
-    57: {"name": "Spin Master", "type": "rotation", "difficulty": "hard"},
-    58: {"name": "Quaternion Solver", "type": "rotation", "difficulty": "expert"},
-    59: {"name": "4D Rotation", "type": "rotation", "difficulty": "expert"},
-    60: {"name": "Transformation Matrix", "type": "rotation", "difficulty": "expert"},
+    # Shooting Games (21-40)
+    21: {"name": "Space Invaders", "type": "shooter", "difficulty": "medium", "description": "Shoot down alien invaders", "cost": 0},
+    22: {"name": "Asteroids", "type": "shooter", "difficulty": "medium", "description": "Destroy asteroids, avoid collision", "cost": 75},
+    23: {"name": "Galaga", "type": "shooter", "difficulty": "hard", "description": "Classic space shooter", "cost": 150},
+    24: {"name": "Bullet Hell", "type": "shooter", "difficulty": "expert", "description": "Dodge intense bullet patterns", "cost": 300},
+    25: {"name": "Chicken Invaders", "type": "shooter", "difficulty": "easy", "description": "Shoot chickens from space", "cost": 50},
+    26: {"name": "Tower Defense", "type": "shooter", "difficulty": "hard", "description": "Defend your tower", "cost": 200},
+    27: {"name": "Boss Battle", "type": "shooter", "difficulty": "hard", "description": "Epic boss fights", "cost": 250},
+    28: {"name": "Missile Command", "type": "shooter", "difficulty": "medium", "description": "Defend cities from missiles", "cost": 100},
+    29: {"name": "Space Shooter", "type": "shooter", "difficulty": "medium", "description": "Classic arcade shooter", "cost": 0},
+    30: {"name": "Laser Battle", "type": "shooter", "difficulty": "hard", "description": "Intense laser combat", "cost": 200},
+    31: {"name": "Vertical Scroller", "type": "shooter", "difficulty": "medium", "description": "Fly and shoot", "cost": 75},
+    32: {"name": "Enemy Waves", "type": "shooter", "difficulty": "hard", "description": "Endless enemy waves", "cost": 225},
+    33: {"name": "Star Wars", "type": "shooter", "difficulty": "hard", "description": "Space dogfight", "cost": 200},
+    34: {"name": "Weapon Master", "type": "shooter", "difficulty": "expert", "description": "Master all weapons", "cost": 350},
+    35: {"name": "Neon Shooter", "type": "shooter", "difficulty": "medium", "description": "Neon arcade shooter", "cost": 125},
+    36: {"name": "Rapid Fire", "type": "shooter", "difficulty": "hard", "description": "Speed shooting challenge", "cost": 175},
+    37: {"name": "Alien Invasion", "type": "shooter", "difficulty": "hard", "description": "Aliens are coming!", "cost": 200},
+    38: {"name": "Robot Wars", "type": "shooter", "difficulty": "hard", "description": "Battle killer robots", "cost": 225},
+    39: {"name": "Laser Grid", "type": "shooter", "difficulty": "expert", "description": "Dodge laser grids", "cost": 300},
+    40: {"name": "Ultimate Defense", "type": "shooter", "difficulty": "expert", "description": "Survive the onslaught", "cost": 400},
     
-    # Puzzle & Logic (61-70)
-    61: {"name": "Shape Sudoku", "type": "logic", "difficulty": "medium"},
-    62: {"name": "Tangram Puzzle", "type": "logic", "difficulty": "medium"},
-    63: {"name": "Pentomino Solver", "type": "logic", "difficulty": "hard"},
-    64: {"name": "Shape Slider", "type": "logic", "difficulty": "medium"},
-    65: {"name": "Block Rotation", "type": "logic", "difficulty": "hard"},
-    66: {"name": "Hexagon Fit", "type": "logic", "difficulty": "hard"},
-    67: {"name": "Impossible Fit", "type": "logic", "difficulty": "expert"},
-    68: {"name": "Portal Puzzle", "type": "logic", "difficulty": "hard"},
-    69: {"name": "Shape Teleport", "type": "logic", "difficulty": "expert"},
-    70: {"name": "Dimensional Shift", "type": "logic", "difficulty": "expert"},
+    # Flappy Bird Style (41-50)
+    41: {"name": "Flappy Bird", "type": "arcade", "difficulty": "medium", "description": "Tap to fly through pipes", "cost": 0},
+    42: {"name": "Flappy Plane", "type": "arcade", "difficulty": "easy", "description": "Pilot a plane", "cost": 50},
+    43: {"name": "Flappy Fish", "type": "arcade", "difficulty": "medium", "description": "Swim through obstacles", "cost": 100},
+    44: {"name": "Flappy Rocket", "type": "arcade", "difficulty": "hard", "description": "Launch rocket through rings", "cost": 175},
+    45: {"name": "Gravity Well", "type": "arcade", "difficulty": "hard", "description": "Navigate gravity", "cost": 200},
+    46: {"name": "Endless Runner", "type": "arcade", "difficulty": "medium", "description": "Run forever, avoid obstacles", "cost": 75},
+    47: {"name": "Dino Run", "type": "arcade", "difficulty": "easy", "description": "Classic dinosaur runner", "cost": 0},
+    48: {"name": "Pipe Runner", "type": "arcade", "difficulty": "medium", "description": "Navigate through pipes", "cost": 100},
+    49: {"name": "Speed Runner", "type": "arcade", "difficulty": "hard", "description": "Ultra-fast platformer", "cost": 225},
+    50: {"name": "Neon Runner", "type": "arcade", "difficulty": "hard", "description": "Neon obstacle course", "cost": 250},
     
-    # Drawing & Creation (71-80)
-    71: {"name": "Shape Draw", "type": "creative", "difficulty": "easy"},
-    72: {"name": "Perfect Circle", "type": "creative", "difficulty": "easy"},
-    73: {"name": "Symmetry Draw", "type": "creative", "difficulty": "medium"},
-    74: {"name": "Freeform Shape", "type": "creative", "difficulty": "medium"},
-    75: {"name": "Mandala Creator", "type": "creative", "difficulty": "hard"},
-    76: {"name": "Fractal Generator", "type": "creative", "difficulty": "hard"},
-    77: {"name": "Bezier Curves", "type": "creative", "difficulty": "hard"},
-    78: {"name": "Geometric Art", "type": "creative", "difficulty": "expert"},
-    79: {"name": "Vector Sculptor", "type": "creative", "difficulty": "expert"},
-    80: {"name": "Topology Canvas", "type": "creative", "difficulty": "expert"},
+    # Puzzle Action (51-60)
+    51: {"name": "Tetris", "type": "puzzle", "difficulty": "medium", "description": "Stack falling blocks", "cost": 0},
+    52: {"name": "Puyo Puyo", "type": "puzzle", "difficulty": "medium", "description": "Match colored blobs", "cost": 100},
+    53: {"name": "Columns", "type": "puzzle", "difficulty": "hard", "description": "Match 3 falling gems", "cost": 150},
+    54: {"name": "Block Drop", "type": "puzzle", "difficulty": "medium", "description": "Drop blocks strategically", "cost": 75},
+    55: {"name": "Tile Match", "type": "puzzle", "difficulty": "easy", "description": "Match tiles", "cost": 50},
+    56: {"name": "Bubble Pop", "type": "puzzle", "difficulty": "easy", "description": "Pop bubbles", "cost": 0},
+    57: {"name": "Gem Crusher", "type": "puzzle", "difficulty": "medium", "description": "Crush gems", "cost": 100},
+    58: {"name": "Line Clear", "type": "puzzle", "difficulty": "hard", "description": "Clear lines perfectly", "cost": 200},
+    59: {"name": "Cascade", "type": "puzzle", "difficulty": "hard", "description": "Watch cascading matches", "cost": 225},
+    60: {"name": "Puzzle Master", "type": "puzzle", "difficulty": "expert", "description": "Master all puzzles", "cost": 350},
     
-    # Memory & Observation (81-90)
-    81: {"name": "Shape Memory", "type": "memory", "difficulty": "easy"},
-    82: {"name": "Pattern Recall", "type": "memory", "difficulty": "medium"},
-    83: {"name": "Sequence Memory", "type": "memory", "difficulty": "medium"},
-    84: {"name": "Change Detection", "type": "memory", "difficulty": "hard"},
-    85: {"name": "Hidden Shapes", "type": "memory", "difficulty": "medium"},
-    86: {"name": "Spot Difference", "type": "memory", "difficulty": "medium"},
-    87: {"name": "Master Observer", "type": "memory", "difficulty": "hard"},
-    88: {"name": "Brief Flash", "type": "memory", "difficulty": "hard"},
-    89: {"name": "Shape Ghost", "type": "memory", "difficulty": "expert"},
-    90: {"name": "Perfect Recall", "type": "memory", "difficulty": "expert"},
+    # Racing Games (61-70)
+    61: {"name": "Top-Down Racer", "type": "racing", "difficulty": "medium", "description": "Avoid traffic, race fast", "cost": 100},
+    62: {"name": "Road Runner", "type": "racing", "difficulty": "easy", "description": "Dodge obstacles on road", "cost": 50},
+    63: {"name": "Canyon Cruise", "type": "racing", "difficulty": "medium", "description": "Race through canyon", "cost": 125},
+    64: {"name": "Speed Racer", "type": "racing", "difficulty": "hard", "description": "High-speed racing", "cost": 200},
+    65: {"name": "Time Trial", "type": "racing", "difficulty": "hard", "description": "Beat the clock", "cost": 175},
+    66: {"name": "Car Dodge", "type": "racing", "difficulty": "medium", "description": "Dodge incoming cars", "cost": 100},
+    67: {"name": "Neon Racer", "type": "racing", "difficulty": "hard", "description": "Neon racing action", "cost": 225},
+    68: {"name": "Cross Road", "type": "racing", "difficulty": "easy", "description": "Cross the road safely", "cost": 0},
+    69: {"name": "Traffic Master", "type": "racing", "difficulty": "hard", "description": "Master traffic patterns", "cost": 250},
+    70: {"name": "Velocity", "type": "racing", "difficulty": "expert", "description": "Maximum speed challenge", "cost": 400},
     
-    # Multiplayer & Advanced (91-100)
-    91: {"name": "Shape Battle", "type": "multiplayer", "difficulty": "medium"},
-    92: {"name": "Polygon Duel", "type": "multiplayer", "difficulty": "hard"},
-    93: {"name": "Tetris Shapes", "type": "multiplayer", "difficulty": "medium"},
-    94: {"name": "Cooperative Build", "type": "multiplayer", "difficulty": "hard"},
-    95: {"name": "Competitive Puzzle", "type": "multiplayer", "difficulty": "hard"},
-    96: {"name": "Shape Auction", "type": "multiplayer", "difficulty": "expert"},
-    97: {"name": "Geometric Chess", "type": "multiplayer", "difficulty": "expert"},
-    98: {"name": "Kaleidoscope Race", "type": "multiplayer", "difficulty": "expert"},
-    99: {"name": "Shape Royale", "type": "multiplayer", "difficulty": "expert"},
-    100: {"name": "Ultimate Geometric", "type": "multiplayer", "difficulty": "expert"},
+    # Platform Games (71-85)
+    71: {"name": "Platformer Classic", "type": "platform", "difficulty": "easy", "description": "Jump and collect coins", "cost": 0},
+    72: {"name": "Super Mario Style", "type": "platform", "difficulty": "medium", "description": "Adventure platformer", "cost": 100},
+    73: {"name": "Cave Explorer", "type": "platform", "difficulty": "medium", "description": "Explore caves, find treasure", "cost": 125},
+    74: {"name": "Jungle Jump", "type": "platform", "difficulty": "medium", "description": "Swing through jungle", "cost": 150},
+    75: {"name": "Mountain Climber", "type": "platform", "difficulty": "hard", "description": "Climb to peak", "cost": 200},
+    76: {"name": "Ice Climb", "type": "platform", "difficulty": "hard", "description": "Climb icy peaks", "cost": 225},
+    77: {"name": "Tower Climb", "type": "platform", "difficulty": "hard", "description": "Climb endless tower", "cost": 250},
+    78: {"name": "Gravity Flip", "type": "platform", "difficulty": "hard", "description": "Control gravity", "cost": 275},
+    79: {"name": "Portal Platformer", "type": "platform", "difficulty": "hard", "description": "Platformer with portals", "cost": 300},
+    80: {"name": "Ninja Parkour", "type": "platform", "difficulty": "expert", "description": "Ninja-style parkour", "cost": 350},
+    81: {"name": "Wall Jump Master", "type": "platform", "difficulty": "expert", "description": "Master wall jumps", "cost": 375},
+    82: {"name": "Pixel Runner", "type": "platform", "difficulty": "medium", "description": "Retro pixel runner", "cost": 100},
+    83: {"name": "Quest", "type": "platform", "difficulty": "hard", "description": "Epic quest platformer", "cost": 275},
+    84: {"name": "Legacy", "type": "platform", "difficulty": "hard", "description": "Classic platformer homage", "cost": 250},
+    85: {"name": "Ultimate Platformer", "type": "platform", "difficulty": "expert", "description": "Master of platformers", "cost": 400},
+    
+    # Multiplayer Games (86-95)
+    86: {"name": "2-Player Battle", "type": "multiplayer", "difficulty": "medium", "description": "Local multiplayer fight", "cost": 0},
+    87: {"name": "Co-op Adventure", "type": "multiplayer", "difficulty": "medium", "description": "Play together", "cost": 150},
+    88: {"name": "Competitive Racing", "type": "multiplayer", "difficulty": "hard", "description": "Race friends", "cost": 200},
+    89: {"name": "Battle Royale Mini", "type": "multiplayer", "difficulty": "hard", "description": "Last one standing", "cost": 250},
+    90: {"name": "Tag Game", "type": "multiplayer", "difficulty": "easy", "description": "Digital tag", "cost": 0},
+    91: {"name": "Team Challenge", "type": "multiplayer", "difficulty": "medium", "description": "Work as team", "cost": 125},
+    92: {"name": "Deathmatch", "type": "multiplayer", "difficulty": "hard", "description": "All-out battle", "cost": 225},
+    93: {"name": "King of Arena", "type": "multiplayer", "difficulty": "hard", "description": "Control the center", "cost": 200},
+    94: {"name": "Co-op Survival", "type": "multiplayer", "difficulty": "hard", "description": "Survive together", "cost": 275},
+    95: {"name": "Ultimate Multiplayer", "type": "multiplayer", "difficulty": "expert", "description": "Max chaos mode", "cost": 400},
+    
+    # Special/Unique Games (96-100)
+    96: {"name": "Pac-Man", "type": "special", "difficulty": "medium", "description": "Eat pellets, avoid ghosts", "cost": 0},
+    97: {"name": "Breakdance Battle", "type": "special", "difficulty": "hard", "description": "Rhythm-based action", "cost": 200},
+    98: {"name": "Memory Blocks", "type": "special", "difficulty": "easy", "description": "Remember and click", "cost": 50},
+    99: {"name": "Whack-a-Mole", "type": "special", "difficulty": "easy", "description": "Click fast moles", "cost": 0},
+    100: {"name": "Arcade Mayhem", "type": "special", "difficulty": "expert", "description": "All games mixed together", "cost": 500},
 }
 
 # ============ OLLAMA CHATBOT ============
@@ -148,13 +202,13 @@ SHAPE_GAMES = {
 def query_ollama(user_message, conversation_history):
     """Query Ollama AI for responses"""
     try:
-        # Build context from conversation history
         context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in conversation_history[-10:]])
         
-        prompt = f"""You are a friendly AI gaming assistant for a shape-based games server. Help users with:
-- Game recommendations based on skill level
-- Tips and strategies for games
-- Gaming challenges and achievements
+        prompt = f"""You are a friendly arcade gaming expert AI. Help users with:
+- Game recommendations based on skill level and preference
+- Tips and strategies for arcade games (Pong, Snake, Space Invaders, etc.)
+- Gaming challenges and high score tips
+- Arcade gaming history and fun facts
 - General gaming questions and encouragement
 
 Context of conversation:
@@ -166,7 +220,7 @@ Assistant:"""
         response = requests.post(
             OLLAMA_URL,
             json={
-                "model": "mistral",  # Or use "neural-chat", "orca-mini", etc.
+                "model": "mistral",
                 "prompt": prompt,
                 "stream": False,
                 "temperature": 0.7,
@@ -189,19 +243,61 @@ Assistant:"""
 
 @app.route('/')
 def index():
-    """Main landing page"""
-    return render_template('index.html')
+    """Main landing page - redirect to login if not authenticated"""
+    if 'username' in session:
+        return render_template('index.html')
+    return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login page"""
+    if request.method == 'POST':
+        data = request.json
+        username = data.get('username', '').lower()
+        password = data.get('password', '')
+        
+        if verify_login(username, password):
+            session['username'] = username
+            users = load_users()
+            session['user_data'] = users.get(username, {})
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Invalid username or password"}), 401
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    """Logout user"""
+    session.clear()
+    return redirect(url_for('login'))
+
+@app.route('/api/user')
+def get_user():
+    """Get current user data"""
+    if 'username' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    users = load_users()
+    user_data = users.get(session['username'], {})
+    user_data['username'] = session['username']
+    return jsonify(user_data)
 
 @app.route('/api/games')
 def get_games():
     """Get all 100 games"""
-    return jsonify(SHAPE_GAMES)
+    if 'username' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+    return jsonify(ARCADE_GAMES)
 
 @app.route('/api/games/<int:game_id>')
 def get_game(game_id):
     """Get specific game details"""
-    if game_id in SHAPE_GAMES:
-        game = SHAPE_GAMES[game_id].copy()
+    if 'username' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    if game_id in ARCADE_GAMES:
+        game = ARCADE_GAMES[game_id].copy()
         game['id'] = game_id
         return jsonify(game)
     return jsonify({"error": "Game not found"}), 404
@@ -209,37 +305,81 @@ def get_game(game_id):
 @app.route('/api/games/random')
 def random_game():
     """Get a random game"""
-    game_id = random.choice(list(SHAPE_GAMES.keys()))
-    game = SHAPE_GAMES[game_id].copy()
+    if 'username' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    game_id = random.choice(list(ARCADE_GAMES.keys()))
+    game = ARCADE_GAMES[game_id].copy()
     game['id'] = game_id
     return jsonify(game)
 
 @app.route('/api/games/filter')
 def filter_games():
     """Filter games by type or difficulty"""
+    if 'username' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+    
     game_type = request.args.get('type')
     difficulty = request.args.get('difficulty')
     
     filtered = {}
-    for gid, game in SHAPE_GAMES.items():
+    for gid, game in ARCADE_GAMES.items():
         if (not game_type or game['type'] == game_type) and \
            (not difficulty or game['difficulty'] == difficulty):
             filtered[gid] = game
     
     return jsonify(filtered)
 
+@app.route('/api/purchase-game/<int:game_id>', methods=['POST'])
+def purchase_game(game_id):
+    """Purchase a game with gems"""
+    if 'username' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    if game_id not in ARCADE_GAMES:
+        return jsonify({"error": "Game not found"}), 404
+    
+    game = ARCADE_GAMES[game_id]
+    cost = game.get('cost', 0)
+    
+    users = load_users()
+    user = users.get(session['username'], {})
+    current_gems = user.get('gems', 1000)
+    
+    if current_gems < cost:
+        return jsonify({"error": "Not enough gems", "needed": cost, "have": current_gems}), 400
+    
+    # Deduct gems and add to purchased games
+    user['gems'] = current_gems - cost
+    if 'purchased_games' not in user:
+        user['purchased_games'] = []
+    if game_id not in user['purchased_games']:
+        user['purchased_games'].append(game_id)
+    
+    users[session['username']] = user
+    save_users(users)
+    
+    return jsonify({
+        "success": True,
+        "gems_remaining": user['gems'],
+        "message": f"Purchased {game['name']}!"
+    })
+
 @app.route('/api/stats')
 def get_stats():
     """Get game statistics"""
+    if 'username' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+    
     types = {}
     difficulties = {}
     
-    for game in SHAPE_GAMES.values():
+    for game in ARCADE_GAMES.values():
         types[game['type']] = types.get(game['type'], 0) + 1
         difficulties[game['difficulty']] = difficulties.get(game['difficulty'], 0) + 1
     
     return jsonify({
-        "total_games": len(SHAPE_GAMES),
+        "total_games": len(ARCADE_GAMES),
         "types": types,
         "difficulties": difficulties
     })
@@ -249,24 +389,24 @@ def get_stats():
 @app.route('/api/chat', methods=['POST'])
 def chat():
     """Chat endpoint for Ollama AI"""
+    if 'username' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+    
     data = request.json
     user_message = data.get('message', '').strip()
     
     if not user_message:
         return jsonify({"error": "No message provided"}), 400
     
-    # Get or initialize conversation history in session
     if 'chat_history' not in session:
         session['chat_history'] = []
     
     conversation_history = session['chat_history']
     conversation_history.append({"role": "user", "content": user_message})
     
-    # Get AI response
     ai_response = query_ollama(user_message, conversation_history)
     conversation_history.append({"role": "assistant", "content": ai_response})
     
-    # Keep only last 20 messages to save memory
     session['chat_history'] = conversation_history[-20:]
     session.modified = True
     
@@ -278,16 +418,12 @@ def chat():
 @app.route('/api/chat/clear', methods=['POST'])
 def clear_chat():
     """Clear chat history"""
+    if 'username' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+    
     session['chat_history'] = []
     session.modified = True
     return jsonify({"status": "Chat cleared"})
-
-@app.route('/api/chat/history')
-def chat_history():
-    """Get chat history"""
-    if 'chat_history' not in session:
-        session['chat_history'] = []
-    return jsonify({"history": session['chat_history']})
 
 # ============ HEALTH CHECK ============
 
@@ -296,10 +432,13 @@ def health():
     """Health check endpoint"""
     return jsonify({
         "status": "online",
-        "games": len(SHAPE_GAMES),
-        "version": "1.0"
+        "games": len(ARCADE_GAMES),
+        "version": "2.1-arcade-login"
     })
 
 if __name__ == '__main__':
-    # Run on 0.0.0.0 to accept external connections
+    # Initialize users file on first run
+    if not os.path.exists(USERS_FILE):
+        save_users(DEFAULT_USERS)
+    
     app.run(host='0.0.0.0', port=5000, debug=True)
