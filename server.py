@@ -19,34 +19,25 @@ app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 # Ollama AI configuration
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
+# Admin credentials
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "ADMIN2025"  # Change this!
+
 # ============ USER ACCOUNTS & AUTHENTICATION ============
 
-# Store user data in JSON file
 USERS_FILE = 'users.json'
 
-# Default 10 accounts - passwords change every month
-def generate_monthly_password(username, month=None):
-    """Generate a password that changes monthly based on username and month"""
-    if month is None:
-        month = datetime.now().strftime("%Y-%m")
-    
-    # Create a hash of username + month + secret
-    seed = f"{username}_{month}_arcade_secret"
-    password_hash = hashlib.md5(seed.encode()).hexdigest()[:10].upper()
-    return password_hash
-
-# Initialize default users
 DEFAULT_USERS = {
-    "player1": {"name": "Player 1", "gems": 1000, "high_score": 0},
-    "player2": {"name": "Player 2", "gems": 1000, "high_score": 0},
-    "player3": {"name": "Player 3", "gems": 1000, "high_score": 0},
-    "player4": {"name": "Player 4", "gems": 1000, "high_score": 0},
-    "player5": {"name": "Player 5", "gems": 1000, "high_score": 0},
-    "player6": {"name": "Player 6", "gems": 1000, "high_score": 0},
-    "player7": {"name": "Player 7", "gems": 1000, "high_score": 0},
-    "player8": {"name": "Player 8", "gems": 1000, "high_score": 0},
-    "player9": {"name": "Player 9", "gems": 1000, "high_score": 0},
-    "player10": {"name": "Player 10", "gems": 1000, "high_score": 0},
+    "player1": {"name": "Player 1", "gems": 1000, "high_score": 0, "purchased_games": []},
+    "player2": {"name": "Player 2", "gems": 1000, "high_score": 0, "purchased_games": []},
+    "player3": {"name": "Player 3", "gems": 1000, "high_score": 0, "purchased_games": []},
+    "player4": {"name": "Player 4", "gems": 1000, "high_score": 0, "purchased_games": []},
+    "player5": {"name": "Player 5", "gems": 1000, "high_score": 0, "purchased_games": []},
+    "player6": {"name": "Player 6", "gems": 1000, "high_score": 0, "purchased_games": []},
+    "player7": {"name": "Player 7", "gems": 1000, "high_score": 0, "purchased_games": []},
+    "player8": {"name": "Player 8", "gems": 1000, "high_score": 0, "purchased_games": []},
+    "player9": {"name": "Player 9", "gems": 1000, "high_score": 0, "purchased_games": []},
+    "player10": {"name": "Player 10", "gems": 1000, "high_score": 0, "purchased_games": []},
 }
 
 def load_users():
@@ -63,17 +54,6 @@ def save_users(users):
     """Save users to JSON file"""
     with open(USERS_FILE, 'w') as f:
         json.dump(users, f, indent=2)
-
-def verify_login(username, password):
-    """Verify username and password"""
-    users = load_users()
-    
-    if username not in users:
-        return False
-    
-    # Check if password matches current month's password
-    correct_password = generate_monthly_password(username)
-    return password.upper() == correct_password
 
 # ============ 100 ARCADE GAMES DATABASE ============
 
@@ -243,59 +223,119 @@ Assistant:"""
 
 @app.route('/')
 def index():
-    """Main landing page - redirect to login if not authenticated"""
-    if 'username' in session:
-        return render_template('index.html')
-    return redirect(url_for('login'))
+    """Main landing page"""
+    return render_template('index.html')
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    """Login page"""
+# ============ ADMIN ROUTES ============
+
+@app.route('/admin', methods=['GET', 'POST'])
+def admin_login():
+    """Admin login page"""
     if request.method == 'POST':
         data = request.json
-        username = data.get('username', '').lower()
+        username = data.get('username', '')
         password = data.get('password', '')
         
-        if verify_login(username, password):
-            session['username'] = username
-            users = load_users()
-            session['user_data'] = users.get(username, {})
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['admin'] = True
             return jsonify({"success": True})
         else:
-            return jsonify({"success": False, "error": "Invalid username or password"}), 401
+            return jsonify({"success": False, "error": "Invalid admin credentials"}), 401
     
-    return render_template('login.html')
+    if 'admin' in session:
+        return render_template('admin.html')
+    
+    return render_template('admin_login.html')
 
-@app.route('/logout')
-def logout():
-    """Logout user"""
-    session.clear()
-    return redirect(url_for('login'))
+@app.route('/admin/logout')
+def admin_logout():
+    """Admin logout"""
+    session.pop('admin', None)
+    return redirect(url_for('admin_login'))
 
-@app.route('/api/user')
-def get_user():
-    """Get current user data"""
-    if 'username' not in session:
-        return jsonify({"error": "Not logged in"}), 401
+@app.route('/api/admin/users')
+def admin_get_users():
+    """Get all users (admin only)"""
+    if 'admin' not in session:
+        return jsonify({"error": "Not authorized"}), 401
     
     users = load_users()
-    user_data = users.get(session['username'], {})
-    user_data['username'] = session['username']
-    return jsonify(user_data)
+    return jsonify(users)
+
+@app.route('/api/admin/update-gems', methods=['POST'])
+def admin_update_gems():
+    """Update gems for a player (admin only)"""
+    if 'admin' not in session:
+        return jsonify({"error": "Not authorized"}), 401
+    
+    data = request.json
+    username = data.get('username', '').lower()
+    action = data.get('action', 'set')  # 'set', 'add', 'subtract'
+    amount = data.get('amount', 0)
+    
+    users = load_users()
+    
+    if username not in users:
+        return jsonify({"error": "User not found"}), 404
+    
+    current_gems = users[username].get('gems', 0)
+    
+    if action == 'set':
+        users[username]['gems'] = amount
+    elif action == 'add':
+        users[username]['gems'] = current_gems + amount
+    elif action == 'subtract':
+        users[username]['gems'] = max(0, current_gems - amount)
+    
+    save_users(users)
+    return jsonify({
+        "success": True,
+        "username": username,
+        "gems": users[username]['gems']
+    })
+
+@app.route('/api/admin/reset-account', methods=['POST'])
+def admin_reset_account():
+    """Reset account to default (admin only)"""
+    if 'admin' not in session:
+        return jsonify({"error": "Not authorized"}), 401
+    
+    data = request.json
+    username = data.get('username', '').lower()
+    
+    users = load_users()
+    
+    if username not in users:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Reset to default
+    users[username] = {
+        "name": f"Player {username.replace('player', '')}",
+        "gems": 1000,
+        "high_score": 0,
+        "purchased_games": []
+    }
+    
+    save_users(users)
+    return jsonify({"success": True, "message": f"Account {username} reset!"})
+
+@app.route('/api/admin/clear-all', methods=['POST'])
+def admin_clear_all():
+    """Reset all accounts (admin only)"""
+    if 'admin' not in session:
+        return jsonify({"error": "Not authorized"}), 401
+    
+    save_users(DEFAULT_USERS.copy())
+    return jsonify({"success": True, "message": "All accounts reset to defaults!"})
 
 @app.route('/api/games')
 def get_games():
     """Get all 100 games"""
-    if 'username' not in session:
-        return jsonify({"error": "Not logged in"}), 401
     return jsonify(ARCADE_GAMES)
 
 @app.route('/api/games/<int:game_id>')
 def get_game(game_id):
     """Get specific game details"""
-    if 'username' not in session:
-        return jsonify({"error": "Not logged in"}), 401
-    
     if game_id in ARCADE_GAMES:
         game = ARCADE_GAMES[game_id].copy()
         game['id'] = game_id
@@ -305,9 +345,6 @@ def get_game(game_id):
 @app.route('/api/games/random')
 def random_game():
     """Get a random game"""
-    if 'username' not in session:
-        return jsonify({"error": "Not logged in"}), 401
-    
     game_id = random.choice(list(ARCADE_GAMES.keys()))
     game = ARCADE_GAMES[game_id].copy()
     game['id'] = game_id
@@ -316,9 +353,6 @@ def random_game():
 @app.route('/api/games/filter')
 def filter_games():
     """Filter games by type or difficulty"""
-    if 'username' not in session:
-        return jsonify({"error": "Not logged in"}), 401
-    
     game_type = request.args.get('type')
     difficulty = request.args.get('difficulty')
     
@@ -330,47 +364,9 @@ def filter_games():
     
     return jsonify(filtered)
 
-@app.route('/api/purchase-game/<int:game_id>', methods=['POST'])
-def purchase_game(game_id):
-    """Purchase a game with gems"""
-    if 'username' not in session:
-        return jsonify({"error": "Not logged in"}), 401
-    
-    if game_id not in ARCADE_GAMES:
-        return jsonify({"error": "Game not found"}), 404
-    
-    game = ARCADE_GAMES[game_id]
-    cost = game.get('cost', 0)
-    
-    users = load_users()
-    user = users.get(session['username'], {})
-    current_gems = user.get('gems', 1000)
-    
-    if current_gems < cost:
-        return jsonify({"error": "Not enough gems", "needed": cost, "have": current_gems}), 400
-    
-    # Deduct gems and add to purchased games
-    user['gems'] = current_gems - cost
-    if 'purchased_games' not in user:
-        user['purchased_games'] = []
-    if game_id not in user['purchased_games']:
-        user['purchased_games'].append(game_id)
-    
-    users[session['username']] = user
-    save_users(users)
-    
-    return jsonify({
-        "success": True,
-        "gems_remaining": user['gems'],
-        "message": f"Purchased {game['name']}!"
-    })
-
 @app.route('/api/stats')
 def get_stats():
     """Get game statistics"""
-    if 'username' not in session:
-        return jsonify({"error": "Not logged in"}), 401
-    
     types = {}
     difficulties = {}
     
@@ -389,9 +385,6 @@ def get_stats():
 @app.route('/api/chat', methods=['POST'])
 def chat():
     """Chat endpoint for Ollama AI"""
-    if 'username' not in session:
-        return jsonify({"error": "Not logged in"}), 401
-    
     data = request.json
     user_message = data.get('message', '').strip()
     
@@ -418,9 +411,6 @@ def chat():
 @app.route('/api/chat/clear', methods=['POST'])
 def clear_chat():
     """Clear chat history"""
-    if 'username' not in session:
-        return jsonify({"error": "Not logged in"}), 401
-    
     session['chat_history'] = []
     session.modified = True
     return jsonify({"status": "Chat cleared"})
@@ -433,11 +423,10 @@ def health():
     return jsonify({
         "status": "online",
         "games": len(ARCADE_GAMES),
-        "version": "2.1-arcade-login"
+        "version": "3.0-arcade-admin-no-login"
     })
 
 if __name__ == '__main__':
-    # Initialize users file on first run
     if not os.path.exists(USERS_FILE):
         save_users(DEFAULT_USERS)
     
