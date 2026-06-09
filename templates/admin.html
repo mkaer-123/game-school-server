@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade Admin Panel - Manage Games & Players</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ff0000;
+        }
+        
+        .header-title {
+            color: #ff0000;
+            text-shadow: 0 0 10px #ff0000;
+        }
+        
+        .header-title h1 {
+            font-size: 1.8em;
+            letter-spacing: 2px;
+        }
+        
+        .logout-btn {
+            background: rgba(255, 0, 0, 0.2);
+            border: 2px solid #ff0000;
+            color: #ff6666;
+            padding: 10px 15px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .logout-btn:hover {
+            background: #ff0000;
+            color: #fff;
+            box-shadow: 0 0 10px #ff0000;
+        }
+        
+        .admin-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: rgba(22, 33, 62, 0.8);
+            border: 3px solid #ff0000;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+        }
+        
+        .card h2 {
+            color: #ff0000;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #ff0000;
+            padding-bottom: 10px;
+            font-size: 1.1em;
+            text-shadow: 0 0 10px #ff0000;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: #00ffff;
+            margin-bottom: 5px;
+            font-size: 0.8em;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ff0000;
+            background: rgba(255, 0, 0, 0.05);
+            color: #ff6666;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7em;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            box-shadow: 0 0 10px #ff0000;
+        }
+        
+        button {
+            padding: 10px 15px;
+            border: 2px solid #ff0000;
+            background: rgba(255, 0, 0, 0.1);
+            color: #ff6666;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            background: #ff0000;
+            color: #fff;
+            box-shadow: 0 0 10px #ff0000;
+        }
+        
+        .users-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .user-card {
+            background: rgba(255, 0, 0, 0.05);
+            border: 2px solid #ff0000;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .user-card:hover {
+            background: rgba(255, 0, 0, 0.2);
+            box-shadow: 0 0 10px #ff0000;
+        }
+        
+        .user-card .username {
+            color: #ff6666;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .user-card .gems {
+            color: #ffff00;
+            font-size: 0.9em;
+            margin: 5px 0;
+        }
+        
+        .user-card .name {
+            color: #00ffff;
+            font-size: 0.7em;
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .action-buttons button {
+            margin-bottom: 0;
+            font-size: 0.65em;
+        }
+        
+        .status {
+            padding: 10px;
+            margin-top: 10px;
+            border: 2px solid #ffff00;
+            background: rgba(255, 255, 0, 0.1);
+            color: #ffff00;
+            font-size: 0.75em;
+            text-align: center;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .stat {
+            background: rgba(255, 0, 0, 0.1);
+            padding: 15px;
+            border: 2px solid #ff0000;
+            text-align: center;
+        }
+        
+        .stat .number {
+            font-size: 1.5em;
+            color: #ff6666;
+            font-weight: bold;
+        }
+        
+        .stat .label {
+            color: #00ffff;
+            font-size: 0.75em;
+            margin-top: 5px;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 0, 0, 0.1);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #ff0000;
+        }
+        
+        @media (max-width: 768px) {
+            .admin-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-title">
+                <h1>⚙️ ADMIN PANEL ⚙️</h1>
+            </div>
+            <a href="/admin/logout"><button class="logout-btn">LOGOUT</button></a>
+        </header>
+        
+        <div class="admin-grid">
+            <!-- Gem Management -->
+            <div class="card">
+                <h2>💎 MANAGE GEMS</h2>
+                
+                <div class="form-group">
+                    <label>SELECT PLAYER</label>
+                    <select id="playerSelect">
+                        <option value="">Choose a player...</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>GEMS AMOUNT</label>
+                    <input type="number" id="gemsAmount" placeholder="1000" value="1000">
+                </div>
+                
+                <div class="form-group">
+                    <label>ACTION</label>
+                    <select id="actionSelect">
+                        <option value="set">SET (Replace)</option>
+                        <option value="add">ADD (Give more)</option>
+                        <option value="subtract">SUBTRACT (Take away)</option>
+                    </select>
+                </div>
+                
+                <button onclick="updateGems()">✓ UPDATE GEMS</button>
+                <button onclick="resetAccount()">🔄 RESET ACCOUNT</button>
+                
+                <div class="status" id="status" style="display:none;"></div>
+            </div>
+            
+            <!-- Players List -->
+            <div class="card">
+                <h2>👥 ALL PLAYERS</h2>
+                
+                <div class="users-list" id="usersList"></div>
+                
+                <button onclick="reloadUsers()" style="margin-top: 15px;">🔄 REFRESH</button>
+                <button onclick="resetAllAccounts()" style="background: rgba(200, 0, 0, 0.2); border-color: #cc0000;">⚠️ RESET ALL</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let users = {};
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            reloadUsers();
+        });
+        
+        async function reloadUsers() {
+            try {
+                const response = await fetch('/api/admin/users');
+                if (!response.ok) {
+                    alert('Admin access denied! Wrong password?');
+                    window.location.href = '/admin';
+                    return;
+                }
+                
+                users = await response.json();
+                displayUsers();
+                updatePlayerSelect();
+            } catch (error) {
+                console.error('Error loading users:', error);
+                alert('Connection error!');
+            }
+        }
+        
+        function displayUsers() {
+            const usersList = document.getElementById('usersList');
+            let html = '';
+            
+            for (let [username, data] of Object.entries(users)) {
+                html += `
+                    <div class="user-card" onclick="selectPlayer('${username}')">
+                        <div class="username">${username.toUpperCase()}</div>
+                        <div class="name">${data.name}</div>
+                        <div class="gems">💎 ${data.gems}</div>
+                    </div>
+                `;
+            }
+            
+            usersList.innerHTML = html;
+        }
+        
+        function updatePlayerSelect() {
+            const select = document.getElementById('playerSelect');
+            select.innerHTML = '<option value="">Choose a player...</option>';
+            
+            for (let username of Object.keys(users)) {
+                const option = document.createElement('option');
+                option.value = username;
+                option.textContent = username.toUpperCase() + ` (${users[username].gems} gems)`;
+                select.appendChild(option);
+            }
+        }
+        
+        function selectPlayer(username) {
+            document.getElementById('playerSelect').value = username;
+            document.getElementById('gemsAmount').value = users[username].gems;
+            document.getElementById('actionSelect').value = 'set';
+        }
+        
+        async function updateGems() {
+            const username = document.getElementById('playerSelect').value;
+            const amount = parseInt(document.getElementById('gemsAmount').value);
+            const action = document.getElementById('actionSelect').value;
+            const status = document.getElementById('status');
+            
+            if (!username) {
+                alert('Select a player first!');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/update-gems', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, action, amount })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    status.textContent = `✓ ${username} now has ${data.gems} gems!`;
+                    status.style.display = 'block';
+                    reloadUsers();
+                } else {
+                    status.textContent = `✗ Error: ${data.error}`;
+                    status.style.display = 'block';
+                }
+            } catch (error) {
+                alert('Error updating gems!');
+            }
+        }
+        
+        async function resetAccount() {
+            const username = document.getElementById('playerSelect').value;
+            const status = document.getElementById('status');
+            
+            if (!username) {
+                alert('Select a player first!');
+                return;
+            }
+            
+            if (!confirm(`Reset ${username}? They'll get 1000 gems back!`)) return;
+            
+            try {
+                const response = await fetch('/api/admin/reset-account', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+                
+                const data = await response.json();
+                status.textContent = `✓ ${data.message}`;
+                status.style.display = 'block';
+                reloadUsers();
+            } catch (error) {
+                alert('Error resetting account!');
+            }
+        }
+        
+        async function resetAllAccounts() {
+            if (!confirm('⚠️ RESET ALL ACCOUNTS? Everyone gets 1000 gems!')) return;
+            
+            try {
+                const response = await fetch('/api/admin/clear-all', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                alert(data.message);
+                reloadUsers();
+            } catch (error) {
+                alert('Error resetting all accounts!');
+            }
+        }
+    </script>
+</body>
+</html>
